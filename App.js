@@ -22,27 +22,38 @@ import {
   CameraScreen,
 } from "./Screens";
 
-
-const STORAGE_KEY = '@save_auth'
+const USER_STORAGE_KEY = '@save_user'
+const USER_TYPE_STORAGE_KEY = '@save_user_type'
+const AUTH_STORAGE_KEY = '@save_auth'
+const JWT_STORAGE_KEY = '@save_jwt'
 
 
 const Burger = () => {
   return (
-    <Entypo name="menu" iconStyle={styles.iconStyle} size={36} color="black" />
+    <Entypo name="menu" style={styles.menuIcon} size={36} color="black" />
   );
 }
 
-const burgerOptions = ({navigation}) => ({headerLeft: () => <TouchableOpacity onPress={() => navigation.toggleDrawer()}><Burger/></TouchableOpacity>,})
+const BarcodeIcon = () => {
+  return (
+    <Entypo name="rainbow" style={styles.barcodeIcon} size={36} color="black" />
+  );
+}
 
-
+const burgerOptions = ({navigation}) => (
+  {
+    headerLeft: () => <TouchableOpacity onPress={() => navigation.toggleDrawer()}><Burger/></TouchableOpacity>,
+    headerRight: () => <TouchableOpacity onPress={() => navigation.navigate('Utilities')}><BarcodeIcon/></TouchableOpacity>,
+  })
 
 
 const JobsStack = createStackNavigator();
-const JobsStackScreen = ({navigation}) => (
+const JobsStackScreen = ({navigation, route}) => {
+  return (
   <JobsStack.Navigator screenOptions={burgerOptions}>
     <JobsStack.Screen name="Jobs" component={JobsScreen}/>
   </JobsStack.Navigator>
-);
+)};
 
 
 
@@ -78,18 +89,23 @@ const UtilityTabScreen = () => (
 const Tabs = createBottomTabNavigator();
 const TabsScreen = () => (
   <Tabs.Navigator>
-    <Tabs.Screen name="Jobs" component={JobsStackScreen} />
+    <Tabs.Screen name="Jobs" component={JobsStackScreen}/>
   </Tabs.Navigator>
 );
 
 const Drawer = createDrawerNavigator();
-const DrawerScreen = () => (
+const DrawerScreen = ({ route }) => {
+  const { getJobs } = React.useContext(AuthContext);
+  React.useEffect(() => {
+  getJobs(route.params.jwtToken.jwtToken)
+  }, []);
+  return(
   <Drawer.Navigator initialRouteName="Jobs">
-    <Drawer.Screen name="Jobs" component={TabsScreen} />
+    <Drawer.Screen name="Jobs" component={TabsScreen}/>
     <Drawer.Screen name="Utilities" component={UtilityTabScreen} />
     <Drawer.Screen name="Profile" component={ProfileStackScreen} />
   </Drawer.Navigator>
-);
+)};
 
 
 const AuthStack = createStackNavigator();
@@ -111,15 +127,22 @@ const AuthStackScreen = () => (
 
 
 const RootStack = createStackNavigator();
-const RootStackScreen = ({ userToken }) => (
+const RootStackScreen = ({ userToken, userName, userType, jwtToken}) => {
+  const { getJwt } = React.useContext(AuthContext);
+  const { readJWTcontext } = React.useContext(AuthContext);
+  React.useEffect(() => {
+    getJwt(userToken,userName, userType)
+    readJWTcontext()
+  }, []);
+  return (
   <RootStack.Navigator headerMode="none">
-    {userToken ? (
+    {(userToken && userName && userType && jwtToken) ? (
       <RootStack.Screen
         name="App"
         component={DrawerScreen}
         options={{
           animationEnabled: false
-        }}
+        }} initialParams={{ userToken:{userToken}, userName:{userName},userType:{userType},jwtToken:{jwtToken} }}
       />
     ) : (
       <RootStack.Screen
@@ -131,31 +154,123 @@ const RootStackScreen = ({ userToken }) => (
       />
     )}
   </RootStack.Navigator>
-);
+)};
 
 export default () => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [userToken, setUserToken] = React.useState(null);
+  const [user, setUser] = React.useState(null);
+  const [userType, setUserType] = React.useState(null);
+  const [jwtToken, setJwtToken] = React.useState(null);
 
-  const saveData = async (auth_key) => {
+  const saveAuth = async (auth_key) => {
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, auth_key)
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, auth_key)
+    } catch (e) {
+      alert('Failed to save session storage')
+    }
+  }
+  const saveUserName = async (userName) => {
+    try {
+      await AsyncStorage.setItem(USER_STORAGE_KEY, userName)
+    } catch (e) {
+      alert('Failed to save session storage')
+    }
+  }
+  const saveUserType = async (userType) => {
+    try {
+      await AsyncStorage.setItem(USER_TYPE_STORAGE_KEY, userType)
     } catch (e) {
       alert('Failed to save session storage')
     }
   }
 
-  const readData = async () => {
+  const saveJWT= async (jwt) => {
     try {
-      const user_token = await AsyncStorage.getItem(STORAGE_KEY)
-  
-      if (user_token !== null) {
+      await AsyncStorage.setItem(JWT_STORAGE_KEY, jwt)
+    } catch (e) {
+      alert('Failed to save JWT')
+    }
+  }
+
+  const readAuth = async () => {
+    try {
+      const user_token = await AsyncStorage.getItem(AUTH_STORAGE_KEY)
+      const user_name = await AsyncStorage.getItem(USER_STORAGE_KEY)
+      const user_type = await AsyncStorage.getItem(USER_TYPE_STORAGE_KEY)
+      if (user_token !== null && user_name !== null && user_type !== null) {
         setUserToken(user_token)
+        setUser(user_name)
+        setUserType(user_type)
+      }
+      else{
+        setUserToken('') 
+        setUser('')
+        setUserType('')
+      }
+    } catch (e) {
+        alert('Failed to fetch session storage')
+    }
+  }
+
+  const readJWT = async () => {
+    try {
+      const user_jwt = await AsyncStorage.getItem(JWT_STORAGE_KEY)
+      if (user_jwt !== null) {
+        setJwtToken(user_jwt)
       }
     } catch (e) {
       alert('Failed to fetch session storage')
     }
   }
+
+  const fetchJwt = (userToken, user, userType ) => {
+    let data = {
+      method: 'POST',
+      mode: "cors", // no-cors, cors, *same-origin *=default
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({"username": user,"auth_key": userToken, "updateAuth":true,"user_type":userType})
+    };
+    return fetch('https://api-veen-e.ewipro.com/v1/authenticate/', data)
+    .then((response) => {
+        if(!response.ok) throw new Error(response.status);
+        else return response.json();
+      })
+    .then((responseData) => {
+      saveJWT(responseData.jwt)
+    })
+    .catch((error) => {
+    });
+  }
+
+  const sendJwtForJobs = (jwt) => {
+    const apiKey = '129937fa0cedad4fg9d0asdaf53e3faefc5'
+    let authGet = apiKey + " " + jwt
+    console.log(authGet)
+    let data = {
+      method: 'GET',
+      mode: "cors", // no-cors, cors, *same-origin *=default
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authGet
+      }
+    };
+    return fetch('https://api-veen-e.ewipro.com/v1/jobs/', data)
+    .then((response) => {
+        if(!response.ok) throw new Error(response.status);
+        else return response.json();
+      })
+    .then((responseData) => {
+      console.log(responseData);
+    })
+    .catch((error) => {
+      console.log(error)
+    });
+  }
+
+
 
   const clearStorage = async () => {
     try {
@@ -167,20 +282,31 @@ export default () => {
 
   const authContext = React.useMemo(() => {
     return {
-      signIn: (auth_key) => {
-        setUserToken(auth_key);
-        setIsLoading(false);
-        saveData(auth_key);
+      getJwt: (user_token, user_name, user_type) => {
+        fetchJwt(user_token, user_name, user_type)
       },
-      signUp: () => {
+      signIn: (auth_key, userName, userType, jwt) => {
+        setUserToken(auth_key);
+        setUser(userName);
+        setUserType(userType);
+        setJwtToken(jwt);
         setIsLoading(false);
-        setUserToken("asdf");
+        saveAuth(auth_key);
+        saveUserName(userName);
+        saveUserType(userType);
+        saveJWT(jwt);
       },
       signOut: () => {
         setIsLoading(false);
         setUserToken(null);
         clearStorage();
-      }
+      },
+      readJWTcontext: () =>{
+        readJWT();
+      },
+      getJobs: (jwt) => {
+        sendJwtForJobs(jwt);
+      },
     };
   }, []);
 
@@ -190,7 +316,7 @@ export default () => {
     }, 1000);
   }, []);
   React.useEffect(() => {
-    readData()
+    readAuth();
   }, []);
 
 
@@ -199,11 +325,10 @@ export default () => {
   }
 
 
-
   return (
     <AuthContext.Provider value={authContext}>
       <NavigationContainer>
-        <RootStackScreen userToken={userToken} />
+        <RootStackScreen userToken={userToken} userName={user} userType={userType} jwtToken={jwtToken}/>
       </NavigationContainer>
     </AuthContext.Provider>
   );

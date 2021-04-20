@@ -7,10 +7,10 @@ import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import { Camera } from 'expo-camera';
-
+import AsyncStorage from '@react-native-community/async-storage'
 import styles from './styles'
 
-const ScreenContainer = ({ children }, {TextInput}) => (
+const ScreenContainer = ({ children }) => (
   <View style={styles.container}>{children}</View>
 );
 
@@ -160,10 +160,10 @@ export const Profile = ({ navigation }) => {
 };
 
 
-export const JobsScreen = ({ navigation }) => {
+export const JobsScreen = ({ navigation, route }) => {
   return (
     <ScreenContainer>
-      <Text>Jobs Screen</Text>
+      <Text>Jobs Screen</Text>      
       <Button title="Drawer" onPress={() => navigation.toggleDrawer()} />
     </ScreenContainer>
   );
@@ -200,7 +200,7 @@ export const SignIn = ({ navigation }) => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({"username": email,"password": password,"user_type":userType})
+      body: JSON.stringify({"username": email,"password": password,"updateAuth":false,"user_type":userType})
     };
     return fetch('https://api-veen-e.ewipro.com/v1/authenticate/', data)
     .then((response) => {
@@ -208,7 +208,7 @@ export const SignIn = ({ navigation }) => {
         else return response.json();
       })
     .then((responseData) => {
-       signIn(responseData.auth_key)
+       signIn(responseData.auth_key, responseData.username, userType, responseData.jwt);
     })
     .catch((error) => {
       setError("Unable to log in," + error.toString());
@@ -248,9 +248,6 @@ export const SignIn = ({ navigation }) => {
     </TouchableOpacity>
     <TouchableOpacity style={styles.loginBtn} onPress={() => getAuth({navigation})}>
       <Text style={styles.loginText}>LOGIN</Text>
-    </TouchableOpacity>
-    <TouchableOpacity onPress={() => navigation.push('CreateAccount')}>
-      <Text style={styles.loginText}>Signup</Text>
     </TouchableOpacity>
     <TouchableOpacity>
       <Text style={styles.errorText} >{errorOutput} </Text>

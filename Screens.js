@@ -9,13 +9,102 @@ import { createDrawerNavigator } from "@react-navigation/drawer";
 import { Camera } from 'expo-camera';
 import AsyncStorage from '@react-native-community/async-storage'
 import styles from './styles'
+import { RadioButton } from 'react-native-paper';
+
 
 const ScreenContainer = ({ children }) => (
   <View style={styles.container}>{children}</View>
 );
 
 
+const Toggle = (props) => {
+  const [colour, setColour] = useState('#0078d7');
+  const [colour2, setColour2] = useState('#fff');
+  const [colour3, setColour3] = useState('#fff');
+  const [fontColour, setFontColour] = useState('#fff');
+  const [fontColour2, setFontColour2] = useState('#333');
+  const [fontColour3, setFontColour3] = useState('#333');
+  let style = StyleSheet.create({
+    button1: {
+      backgroundColor: colour,
+      flex:3.33,
+      alignItems:'center',
+      marginLeft:5,
+      marginRight:5,
+      borderRadius:5,
+    },
+    label1:{
+      color: fontColour,
+      textAlign: "right",
+    },
+    button2: {
+      backgroundColor: colour2,
+      color: fontColour2,
+      flex:3.33,
+      alignItems:'center',
+      marginLeft:5,
+      marginRight:5,
+      borderRadius:5,
+    },
+    label2:{
+      color: fontColour2,
+      textAlign: "right",
+    },
+    button3: {
+      backgroundColor: colour3,
+      color: fontColour3,
+      flex:3.33,
+      alignItems:'center',
+      marginLeft:5,
+      marginRight:5,
+      borderRadius:5,
+    },
+    label3:{
+      color: fontColour3,
+      textAlign: "right",
+    },
+  })
+  const handleChange = (newValue) => {
+    props.handleChange(newValue)
+    if (newValue == 1){
+      setColour('#0078d7')
+      setColour2('#fff')
+      setColour3('#fff')
+      setFontColour('#fff')
+      setFontColour2('#333')
+      setFontColour3('#333')
+    }
+    if (newValue == 2){
+      setColour('#fff')
+      setColour2('#0078d7')
+      setColour3('#fff')
+      setFontColour('#333')
+      setFontColour2('#fff')
+      setFontColour3('#333')
+    }
+    if (newValue == 3){
+      setColour('#fff')
+      setColour2('#fff')
+      setColour3('#0078d7')
+      setFontColour('#333')
+      setFontColour2('#333')
+      setFontColour3('#fff')
+    }
+  }
+  return (
+    <RadioButton.Group onValueChange={newValue => handleChange(newValue)} value={props.value} style={{width:450}}>
+      <View style={{flexDirection:"row",alignItems:'center'}}>
 
+        <RadioButton.Item label="Manager" labelStyle={style.label1} color="#fff" style={style.button1}  value="1" />
+
+        <RadioButton.Item label="Packer"  labelStyle={style.label2} color="#fff"   style={style.button2} value="2"/>
+
+        <RadioButton.Item label="Driver"  labelStyle={style.label3} color="#fff"   style={style.button3}  value="3" />
+
+      </View>
+    </RadioButton.Group>
+  );
+};
 
 
 
@@ -191,7 +280,11 @@ export const SignIn = ({ navigation }) => {
   const [errorOutput, setError] = useState('');
 
 
-
+  const [value, setValue] = React.useState('1');
+  const handleChange = (newValue) => {
+    setValue(newValue)
+    setuserType(newValue)
+  }
 
   const getAuth = () => {
     let data = {
@@ -225,7 +318,7 @@ export const SignIn = ({ navigation }) => {
     <View style={styles.inputView} >
       <TextInput  
         style={styles.inputText}
-        placeholder="Email..." 
+        placeholder="Username..." 
         placeholderTextColor="#003f5c"
         onChangeText={text => setEmail(text)}/>
     </View>
@@ -237,15 +330,7 @@ export const SignIn = ({ navigation }) => {
         placeholderTextColor="#003f5c"
         onChangeText={text => setPassword(text)}/>
     </View>
-    <View style={styles.inputView} >
-      <TextInput  
-        style={styles.inputText}
-        placeholder="User type" 
-        placeholderTextColor="#003f5c"
-        onChangeText={text => setuserType(text)}/>
-    </View>
-    <TouchableOpacity>
-    </TouchableOpacity>
+      <Toggle handleChange={handleChange} value={value}/>
     <TouchableOpacity style={styles.loginBtn} onPress={() => getAuth({navigation})}>
       <Text style={styles.loginText}>LOGIN</Text>
     </TouchableOpacity>
